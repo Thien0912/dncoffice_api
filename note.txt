@@ -1,0 +1,71 @@
+Trigger bảng nhân viên
+
+
+
+
+SHOW TRIGGERS LIKE 'hrm_nhan_vien';
+
+DROP TRIGGER IF EXISTS tinh_ngay_phep_sau_khi_them;
+
+
+
+
+DELIMITER $$
+
+CREATE TRIGGER tinh_ngay_phep_sau_khi_them
+AFTER INSERT ON hrm_nhan_vien
+FOR EACH ROW
+BEGIN
+    DECLARE so_ngay_phep INT;
+    
+    -- Lấy số ngày phép cơ bản từ bảng quy định nghỉ phép
+    SELECT ngay_phep_co_ban INTO so_ngay_phep
+    FROM hrm_quy_dinh_nghi_phep
+    WHERE loai_cong_viec = 'Binh_thuong';
+    
+    -- Tính số ngày phép dựa trên thời gian làm việc
+    SET so_ngay_phep = ROUND((TIMESTAMPDIFF(MONTH, NEW.ngay_vao_lam, CURDATE()) / 12) * so_ngay_phep);
+
+    -- Chèn vào bảng hrm_nghi_phep_cong_don, sử dụng id_nhan_vien thay vì id
+    INSERT INTO hrm_nghi_phep_cong_don (nhan_vien_id, nam, so_ngay_phep, so_ngay_cong_don)
+    VALUES (NEW.id_nhan_vien, YEAR(CURDATE()), so_ngay_phep, 0);
+END$$
+
+DELIMITER ;
+
+
+
+
+//Trigger của đăng ký làm thêm (tinh_ngay_phep_sau_khi_them)
+
+BEGIN
+    DECLARE tong_gio_lam_them INT;
+    
+    SELECT SUM(TIMESTAMPDIFF(HOUR, gio_bat_dau, gio_ket_thuc))
+    INTO tong_gio_lam_them
+    FROM hrm_dang_ky_lam_them
+    WHERE nhan_vien_id = NEW.nhan_vien_id AND ngay = NEW.ngay;
+    
+    IF tong_gio_lam_them + TIMESTAMPDIFF(HOUR, NEW.gio_bat_dau, NEW.gio_ket_thuc) > 12 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Tong so gio lam trong ngay vuot qua gioi han 12 gio.';
+    END IF;
+END
+
+
+
+//Trigger của kiểm tra giờ làm thêm (kiem_tra_gio_lam_them)
+
+BEGIN
+    DECLARE tong_gio_lam_them INT;
+    
+    SELECT SUM(TIMESTAMPDIFF(HOUR, gio_bat_dau, gio_ket_thuc))
+    INTO tong_gio_lam_them
+    FROM hrm_dang_ky_lam_them
+    WHERE nhan_vien_id = NEW.nhan_vien_id AND ngay = NEW.ngay;
+    
+    IF tong_gio_lam_them + TIMESTAMPDIFF(HOUR, NEW.gio_bat_dau, NEW.gio_ket_thuc) > 12 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Tong so gio lam trong ngay vuot qua gioi han 12 gio.';
+    END IF;
+END

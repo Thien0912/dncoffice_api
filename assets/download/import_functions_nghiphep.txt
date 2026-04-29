@@ -1,0 +1,376 @@
+    /**
+     * Import dữ liệu nghỉ phép từ Excel
+     */
+    public function import_post()
+    {
+        try {
+            $auth = $this->getUserLogin();
+            $stop = false;
+            $message = '';
+            $dataList = [];
+            $file_import = commonRequest('file_excel');
+
+            if (!$file_import) {
+                resError(['file_excel' => 'Vui lòng chọn file Excel'], 'Không có file được chọn', REST_Controller::HTTP_BAD_REQUEST);
+            }
+
+            $config['upload_path'] = 'uploads/excel/nghiphep/';
+            $config['allowed_types'] = 'xls|xlsx';
+
+            if (!is_dir($config['upload_path'])) {
+                mkdir($config['upload_path'], 0755, true);
+            }
+
+            $newFileName = pathinfo($file_import['name'], PATHINFO_FILENAME) . '-' . date('Ymd') . '-' . time() . '.' . pathinfo($file_import['name'], PATHINFO_EXTENSION);
+            $config['file_name'] = $newFileName;
+
+            $this->upload->initialize($config);
+
+            if (!$this->upload->do_upload('file_excel')) {
+                $stop = true;
+                $message = 'Thất bại: ' . $this->upload->display_errors();
+                resError(['message' => $message], $message, REST_Controller::HTTP_BAD_REQUEST);
+            }
+
+            $uploadData = $this->upload->data();
+            $fileName = $uploadData['file_name'];
+            $path = $config['upload_path'] . $fileName;
+
+            // Import dữ liệu từ Excel
+            $dataList = $this->pxl->importExcel(3, 5, $path);
+            $objPHPExcel = PHPExcel_IOFactory::load($path);
+            $sheet = $objPHPExcel->getActiveSheet();
+            $highestRow = $sheet->getHighestRow();
+
+            // Thêm cột kết quả
+            $columnResult = 'M';
+            $sheet->setCellValue($columnResult . '4', 'KẾT QUẢ');
+            $sheet->getColumnDimension($columnResult)->setAutoSize(true);
+            $sheet->getStyle($columnResult . '4')->applyFromArray([
+                'font' => ['bold' => true],
+                'alignment' => [
+                    'horizontal' => PHPExcel_Style_Alignment::HORIZONTAL_CENTER,
+                    'vertical' => PHPExcel_Style_Alignment::VERTICAL_CENTER
+                ],
+                'borders' => [
+                    'allborders' => [
+                        'style' => PHPExcel_Style_Border::BORDER_THIN,
+                        'color' => ['rgb' => '000000']
+                    ]
+                ]
+            ]);
+
+            $requiredKeys = ['ma_nhan_vien', 'ma_loai_phep', 'tu_ngay', 'den_ngay', 'buoi_nghi'];
+
+            // Kiểm tra file rỗng
+            foreach ($dataList as $index => $l) {
+                if (!array_filter($l)) {
+                    unset($dataList[$index]);
+                    continue;
+                }
+            }
+
+            if (empty($dataList)) {
+                unlink($path);
+                resError(['message' => 'File import đang rỗng'], 'File rỗng', REST_Controller::HTTP_BAD_REQUEST);
+            }
+
+            $firstDataList = reset($dataList);
+            $missingKeys = array_diff($requiredKeys, array_keys($firstDataList));
+            if (!empty($missingKeys)) {
+                unlink($path);
+                resError(
+                    ['missing_keys' => $missingKeys],
+                    'File không đúng định dạng hoặc đã bị chỉnh sửa. Vui lòng tải lại file mẫu',
+                    REST_Controller::HTTP_BAD_REQUEST
+                );
+            }
+
+            $countError = $countSuccess = 0;
+            $totalRow = count($dataList);
+            $startRow = 5;
+
+            foreach ($dataList as $key => $l) {
+                $errorMessages = [];
+
+                // Validate các trường bắt buộc
+                if (empty($l['ma_nhan_vien'])) {
+                    $errorMessages[] = 'Mã NV rỗng.';
+                    $this->highlightCell($sheet, 'B', $startRow, 'f9ca24');
+                }
+                if (empty($l['ma_loai_phep'])) {
+                    $errorMessages[] = 'Mã loại phép rỗng.';
+                    $this->highlightCell($sheet, 'D', $startRow, 'f9ca24');
+                }
+                if (empty($l['tu_ngay'])) {
+                    $errorMessages[] = 'Từ ngày rỗng.';
+                    $this->highlightCell($sheet, 'E', $startRow, 'f9ca24');
+                }
+                if (empty($l['den_ngay'])) {
+                    $errorMessages[] = 'Đến ngày rỗng.';
+                    $this->highlightCell($sheet, 'F', $startRow, 'f9ca24');
+                }
+                if (empty($l['buoi_nghi'])) {
+                    $errorMessages[] = 'Buổi nghỉ rỗng.';
+                    $this->highlightCell($sheet, 'G', $startRow, 'f9ca24');
+                }
+
+                $l['ketqua'] = '';
+
+                if (!empty($errorMessages)) {
+                    $l['ketqua'] = implode(' ', $errorMessages);
+                    $countError++;
+                } else {
+                    // Xử lý logic insert
+                    $this->db->trans_start();
+
+                    try {
+                        // Tìm nhân viên
+                        $nhanVien = $this->Hrm_nhan_vien_model
+                            ->where('ma_nhan_vien', trim($l['ma_nhan_vien']))
+                            ->where('deleted_at IS NULL')
+                            ->first();
+
+                        if (!$nhanVien && !empty($l['email'])) {
+                            $nhanVien = $this->Hrm_nhan_vien_model
+                                ->where('email', trim($l['email']))
+                                ->where('deleted_at IS NULL')
+                                ->first();
+                        }
+
+                        if (!$nhanVien) {
+                            throw new Exception('Không tìm thấy nhân viên');
+                        }
+
+                        // Tìm loại phép
+                        $loaiPhep = $this->Hrm_danh_muc_loai_nghi_phep_model
+                            ->where('ma_loai_phep', trim($l['ma_loai_phep']))
+                            ->where('deleted_at IS NULL')
+                            ->first();
+
+                        if (!$loaiPhep) {
+                            throw new Exception('Không tìm thấy loại phép: ' . $l['ma_loai_phep']);
+                        }
+
+                        // Parse ngày
+                        $tuNgay = DateTime::createFromFormat('d/m/Y', trim($l['tu_ngay']));
+                        $denNgay = DateTime::createFromFormat('d/m/Y', trim($l['den_ngay']));
+
+                        if (!$tuNgay || !$denNgay) {
+                            throw new Exception('Định dạng ngày không đúng (dd/mm/yyyy)');
+                        }
+
+                        // Validate buổi nghỉ
+                        $buoiNghi = trim($l['buoi_nghi']);
+                        if (!in_array($buoiNghi, ['Sang', 'Chieu', 'Ca_ngay'])) {
+                            throw new Exception('Buổi nghỉ không hợp lệ');
+                        }
+
+                        // Validate trạng thái
+                        $trangThaiCap1 = !empty($l['trang_thai_cap_mot']) ? trim($l['trang_thai_cap_mot']) : 'Cho_duyet';
+                        $trangThaiCap2 = !empty($l['trang_thai_cap_hai']) ? trim($l['trang_thai_cap_hai']) : 'Cho_duyet';
+
+                        if (!in_array($trangThaiCap1, ['Cho_duyet', 'Da_duyet', 'Tu_choi'])) {
+                            throw new Exception('Trạng thái cấp 1 không hợp lệ');
+                        }
+                        if (!in_array($trangThaiCap2, ['Cho_duyet', 'Da_duyet', 'Tu_choi'])) {
+                            throw new Exception('Trạng thái cấp 2 không hợp lệ');
+                        }
+
+                        // Tạo UUID
+                        $uuid = sprintf('%04x%04x', mt_rand(0, 0xffff), mt_rand(0, 0xffff));
+
+                        // Insert đơn nghỉ phép
+                        $dataNghiPhep = [
+                            'uuid_nghi_phep' => $uuid,
+                            'id_nhan_vien' => $nhanVien['id_nhan_vien'],
+                            'id_loai_phep' => $loaiPhep['id_loai_phep'],
+                            'loai_nghi' => 'Binh_thuong',
+                            'ly_do_nghi' => !empty($l['ly_do_nghi']) ? $l['ly_do_nghi'] : null,
+                            'trang_thai_cap_mot' => $trangThaiCap1,
+                            'trang_thai_cap_hai' => $trangThaiCap2,
+                            'created_user_id' => $auth['ql_nguoi_dung_id'],
+                            'created_at' => date('Y-m-d H:i:s')
+                        ];
+
+                        $this->db->insert('hrm_nghi_phep', $dataNghiPhep);
+                        $idNghiPhep = $this->db->insert_id();
+
+                        // Tạo danh sách ngày nghỉ
+                        $currentDate = clone $tuNgay;
+                        while ($currentDate <= $denNgay) {
+                            $dayOfWeek = $currentDate->format('N');
+                            if ($dayOfWeek < 6) { // Chỉ tính thứ 2-6
+                                if ($buoiNghi == 'Ca_ngay') {
+                                    $this->db->insert('hrm_nghi_phep_chi_tiet', [
+                                        'id_nghi_phep' => $idNghiPhep,
+                                        'ngay_nghi' => $currentDate->format('Y-m-d'),
+                                        'buoi_nghi' => 'Sang',
+                                        'so_ngay_nghi' => 0.5
+                                    ]);
+                                    $this->db->insert('hrm_nghi_phep_chi_tiet', [
+                                        'id_nghi_phep' => $idNghiPhep,
+                                        'ngay_nghi' => $currentDate->format('Y-m-d'),
+                                        'buoi_nghi' => 'Chieu',
+                                        'so_ngay_nghi' => 0.5
+                                    ]);
+                                } else {
+                                    $this->db->insert('hrm_nghi_phep_chi_tiet', [
+                                        'id_nghi_phep' => $idNghiPhep,
+                                        'ngay_nghi' => $currentDate->format('Y-m-d'),
+                                        'buoi_nghi' => $buoiNghi,
+                                        'so_ngay_nghi' => 0.5
+                                    ]);
+                                }
+                            }
+                            $currentDate->modify('+1 day');
+                        }
+
+                        // Lấy người duyệt từ đơn vị
+                        $idDonVi = $nhanVien['id_don_vi_cong_tac'];
+                        $nguoiDuyetCap1Updated = false;
+                        $nguoiDuyetCap2Updated = false;
+
+                        if ($idDonVi) {
+                            $dsLanhDao = $this->db
+                                ->select('ldv.ql_nguoi_dung_id AS id_nguoi_duyet')
+                                ->from('e_lanh_dao_don_vi ldv')
+                                ->where('ldv.id_don_vi', $idDonVi)
+                                ->where('ldv.deleted_at IS NULL')
+                                ->limit(1)
+                                ->get()
+                                ->result_array();
+
+                            foreach ($dsLanhDao as $lanhDao) {
+                                $daDuyet = ($trangThaiCap1 == 'Da_duyet') ? 1 : 0;
+                                $thoiGianDuyet = ($trangThaiCap1 == 'Da_duyet') ? date('Y-m-d H:i:s') : null;
+
+                                $this->db->insert('hrm_nghi_phep_nguoi_duyet', [
+                                    'id_nghi_phep' => $idNghiPhep,
+                                    'id_nguoi_duyet' => $lanhDao['id_nguoi_duyet'],
+                                    'cap_duyet' => 1,
+                                    'da_duyet' => $daDuyet,
+                                    'ly_do' => !empty($l['ly_do_duyet_cap_mot']) ? $l['ly_do_duyet_cap_mot'] : null,
+                                    'thoi_gian_duyet' => $thoiGianDuyet,
+                                    'created_at' => date('Y-m-d H:i:s')
+                                ]);
+
+                                if (!$nguoiDuyetCap1Updated) {
+                                    $this->db->where('id_nghi_phep', $idNghiPhep)
+                                        ->update('hrm_nghi_phep', [
+                                            'nguoi_duyet_cap_mot_id' => $lanhDao['id_nguoi_duyet']
+                                        ]);
+                                    $nguoiDuyetCap1Updated = true;
+                                }
+                            }
+
+                            // Xử lý người duyệt cấp 2 (TC-HC)
+                            $phongTCHC = $this->db
+                                ->select('dv.id_don_vi')
+                                ->from('e_don_vi dv')
+                                ->where('dv.ma_don_vi', 'PHONG_TCHC')
+                                ->where('dv.deleted_at IS NULL')
+                                ->get()
+                                ->row_array();
+
+                            if ($phongTCHC) {
+                                $dsLanhDaoCap2 = $this->db
+                                    ->select('ldv.ql_nguoi_dung_id AS id_nguoi_duyet')
+                                    ->from('e_lanh_dao_don_vi ldv')
+                                    ->where('ldv.id_don_vi', $phongTCHC['id_don_vi'])
+                                    ->where('ldv.deleted_at IS NULL')
+                                    ->limit(1)
+                                    ->get()
+                                    ->result_array();
+
+                                foreach ($dsLanhDaoCap2 as $lanhDao2) {
+                                    $daDuyet2 = ($trangThaiCap2 == 'Da_duyet') ? 1 : 0;
+                                    $thoiGianDuyet2 = ($trangThaiCap2 == 'Da_duyet') ? date('Y-m-d H:i:s') : null;
+
+                                    $this->db->insert('hrm_nghi_phep_nguoi_duyet', [
+                                        'id_nghi_phep' => $idNghiPhep,
+                                        'id_nguoi_duyet' => $lanhDao2['id_nguoi_duyet'],
+                                        'cap_duyet' => 2,
+                                        'da_duyet' => $daDuyet2,
+                                        'ly_do' => !empty($l['ly_do_duyet_cap_hai']) ? $l['ly_do_duyet_cap_hai'] : null,
+                                        'thoi_gian_duyet' => $thoiGianDuyet2,
+                                        'created_at' => date('Y-m-d H:i:s')
+                                    ]);
+
+                                    if (!$nguoiDuyetCap2Updated) {
+                                        $this->db->where('id_nghi_phep', $idNghiPhep)
+                                            ->update('hrm_nghi_phep', [
+                                                'nguoi_duyet_cap_hai_id' => $lanhDao2['id_nguoi_duyet']
+                                            ]);
+                                        $nguoiDuyetCap2Updated = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        $this->db->trans_complete();
+
+                        if ($this->db->trans_status() === FALSE) {
+                            throw new Exception('Lỗi ghi dữ liệu');
+                        }
+
+                        $l['ketqua'] = 'Thành công';
+                        $countSuccess++;
+                    } catch (Exception $e) {
+                        $this->db->trans_rollback();
+                        $l['ketqua'] = 'Lỗi: ' . $e->getMessage();
+                        $countError++;
+                    }
+                }
+
+                // Ghi kết quả vào Excel
+                $sheet->setCellValue($columnResult . $startRow, $l['ketqua']);
+                $color = (stripos($l['ketqua'], 'Thành công') !== false) ? '77c884' : 'f57878';
+                $sheet->getStyle($columnResult . $startRow)->applyFromArray([
+                    'fill' => [
+                        'type' => PHPExcel_Style_Fill::FILL_SOLID,
+                        'color' => ['rgb' => $color]
+                    ]
+                ]);
+
+                $startRow++;
+            }
+
+            if ($countSuccess > 0) {
+                $message = 'Import thành công ' . $countSuccess . '/' . $totalRow . ' dòng.';
+                if ($countError > 0) {
+                    $message .= ' Thất bại ' . $countError . ' dòng.';
+                }
+            } else {
+                $message = 'Không có dòng nào được import thành công. Vui lòng kiểm tra lại dữ liệu.';
+            }
+
+            // Lưu file kết quả
+            $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
+            $objWriter->save($path);
+
+            resSuccess([
+                'message' => $message,
+                'file_result' => base_url($path),
+                'count_success' => $countSuccess,
+                'count_error' => $countError,
+                'total' => $totalRow
+            ], $message, REST_Controller::HTTP_OK);
+        } catch (Exception $e) {
+            log_message('error', 'Lỗi import nghỉ phép: ' . $e->getMessage());
+            resError(['message' => $e->getMessage()], 'Có lỗi xảy ra khi import', REST_Controller::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Helper function để highlight cell
+     */
+    private function highlightCell($sheet, $column, $row, $color)
+    {
+        $sheet->getStyle($column . $row)->applyFromArray([
+            'fill' => [
+                'type' => PHPExcel_Style_Fill::FILL_SOLID,
+                'color' => ['rgb' => $color]
+            ]
+        ]);
+    }

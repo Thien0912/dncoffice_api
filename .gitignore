@@ -1,0 +1,55 @@
+
+/.history
+
+/uploads/
+# Bỏ qua toàn bộ thư mục hệ thống tạm
+/application/cache/*
+/application/logs/*
+!/application/cache/index.html
+!/application/logs/index.html
+
+# Bỏ qua file cấu hình chứa thông tin nhạy cảm
+/application/config/database.php
+/application/config/config.php
+/application/config/googleplus.php
+/application/config/googleplus_.php
+
+# Thư mục uploads, nếu có
+!/uploads/index.html
+
+# File backup, log, temp
+*.bak
+*.log
+*.tmp
+
+# Mac, Linux, Windows hệ điều hành tạo file rác
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Composer (nếu dùng)
+vendor/
+composer.lock
+
+# Node (nếu dùng cho frontend)
+node_modules/
+npm-debug.log
+
+# IDE files (VS Code, PhpStorm, v.v.)
+.vscode/
+.idea/
+
+# File môi trường (nếu dùng)
+.env
+.env.*
+
+
+# Ignore private key file
+# private_key.pem
+
+# Ignore public key file
+# public_key.pem
+
+.agent/
+.planning/
