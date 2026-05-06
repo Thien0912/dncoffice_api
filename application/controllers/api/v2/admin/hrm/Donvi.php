@@ -18,7 +18,7 @@ class Donvi extends REST_INSTANCE_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->permissionMiddleware();
+        // $this->permissionMiddleware();
         $this->load->helper('url');
         $this->load->model(['E_don_vi_model']);
         $this->load->library(['Validator']);
@@ -225,7 +225,7 @@ class Donvi extends REST_INSTANCE_Controller
             resError('Dữ liệu không hợp lệ');
         }
 
-        $this->E_don_vi_model->whereIn('id_don_vi', $ids)->delete();
+        $this->E_don_vi_model->whereIn('id_don_vi', $ids)->update(['deleted_at' => date('Y-m-d H:i:s')]);
 
         $this->createLog('delete', 'Xóa đơn vị', $donvi,  null, 'e_don_vi');
         $this->db->trans_commit();

@@ -19,6 +19,7 @@ class E_hinh_thuc_model extends MY_Model
     public function getAll($start = 0, $length = 10, $searchValue = null, $order = [], $columns = [], $searchKey = [])
     {
         $this->db->from('e_hinh_thuc');
+        $this->db->where('deleted_at IS NULL', null, false);
         $totalRecordsQuery = clone $this->db;
         $recordsTotal = $totalRecordsQuery->count_all_results('', FALSE);
 

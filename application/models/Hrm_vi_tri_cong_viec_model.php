@@ -19,6 +19,7 @@ class Hrm_vi_tri_cong_viec_model extends MY_Model
     public function getAll($start = 0, $length = 10, $searchValue = null, $orderBy = [], $searchKey = [])
     {
         $this->db->from('hrm_vi_tri_cong_viec');
+        $this->db->where('deleted_at IS NULL', null, false);
         $totalRecordsQuery = clone $this->db;
         $recordsTotal = $totalRecordsQuery->count_all_results('', FALSE);
 

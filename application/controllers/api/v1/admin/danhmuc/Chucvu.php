@@ -184,7 +184,7 @@ class Chucvu extends REST_INSTANCE_Controller
             }
 
 
-            $this->Hrm_chuc_vu_model->where('id_chuc_vu', $id_chuc_vu)->delete();
+            $this->Hrm_chuc_vu_model->where('id_chuc_vu', $id_chuc_vu)->update(['deleted_at' => date('Y-m-d H:i:s')]);
 
             $this->createLog(
                 'delete',

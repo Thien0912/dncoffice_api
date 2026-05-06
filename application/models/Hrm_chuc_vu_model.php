@@ -17,6 +17,7 @@ class Hrm_chuc_vu_model extends MY_Model
     public function getAll($start = 0, $length = 10, $searchValue = null, $order = [], $searchKey = array())
     {
         $this->db->from('hrm_chuc_vu');
+        $this->db->where('deleted_at IS NULL', null, false);
         $totalRecordsQuery = clone $this->db;
         $recordsTotal = $totalRecordsQuery->count_all_results('', FALSE);
 

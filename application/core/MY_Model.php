@@ -343,10 +343,14 @@ class MY_Model extends CI_Model
     /**
      * @return boolean
      */
-    public function delete()
+    public function delete($id = null)
     {
-        // $this->db->where($this->primaryKey, $id);
-        return $this->db->delete($this->table);
+        if ($id !== null) {
+            $this->db->where($this->primaryKey, $id);
+        }
+        if ($this->db->field_exists('deleted_at', $this->table)) {
+            return $this->db->update($this->table, ['deleted_at' => date('Y-m-d H:i:s')]);
+        }
     }
 
     /**

@@ -311,7 +311,7 @@ class Daotao extends REST_INSTANCE_Controller
         }
 
         $this->db->trans_start();
-        $this->Hrm_nhan_vien_dao_tao_model->whereIn('id_nhan_vien_dao_tao', $ids)->delete();
+        $this->Hrm_nhan_vien_dao_tao_model->whereIn('id_nhan_vien_dao_tao', $ids)->update(['deleted_at' => date('Y-m-d H:i:s')]);
 
         $this->createLog('delete', 'Xóa quá trình đào tạo', $oldData,  null, 'hrm_nhan_vien_dao_tao');
 
@@ -332,6 +332,26 @@ class Daotao extends REST_INSTANCE_Controller
             $this->logEmployeeHistory($id_nhan_vien, 'Xoá quá trình đào tạo', $changes);
         }
 
+        $this->db->trans_commit();
+        resSuccess($oldData, 'Xóa thành công');
+    }
+
+    public function delete_post()
+    {
+        $ids = commonRequest('ids');
+        if (!$ids || !is_array($ids)) {
+            resError('Vui lòng cung cấp danh sách ID cần xóa');
+        }
+
+        $oldData = $this->Hrm_dao_tao_model->whereIn('id_dao_tao', $ids)->get();
+        if (count($ids) != count($oldData)) {
+            resError('Không tìm thấy khóa đào tạo!');
+        }
+
+        $this->db->trans_start();
+        $this->Hrm_dao_tao_model->whereIn('id_dao_tao', $ids)->update(['deleted_at' => date('Y-m-d H:i:s')]);
+
+        $this->createLog('delete', 'Xóa khóa đào tạo', $oldData, null, 'hrm_dao_tao');
         $this->db->trans_commit();
         resSuccess($oldData, 'Xóa thành công');
     }

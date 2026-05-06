@@ -194,7 +194,7 @@ class Bophan extends REST_INSTANCE_Controller
             }
 
 
-            $this->E_bo_phan_model->where('id_bo_phan', $id_bo_phan)->delete();
+            $this->E_bo_phan_model->where('id_bo_phan', $id_bo_phan)->update(['deleted_at' => date('Y-m-d H:i:s')]);
 
             $this->createLog(
                 'delete',

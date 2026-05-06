@@ -17,7 +17,7 @@ class Hrm_dao_tao_model extends MY_Model
     public function getAllDaotao($start = 0, $length = 10, $searchValue = null, $orderBy = [], $searchKey = array(), $fromDate = null, $toDate = null)
     {
         $this->db->from('hrm_dao_tao');
-
+        $this->db->where('deleted_at IS NULL', null, false);
         $totalRecordsQuery = clone $this->db;
         $recordsTotal = $totalRecordsQuery->count_all_results('', FALSE);
 

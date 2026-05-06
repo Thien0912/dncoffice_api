@@ -19,7 +19,7 @@ class Loai extends REST_INSTANCE_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->permissionMiddleware();
+        // $this->permissionMiddleware();
         $this->load->helper('url');
         $this->load->model(['E_loai_model']);
     }

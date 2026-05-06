@@ -123,7 +123,7 @@ class Tinhchat extends REST_INSTANCE_Controller
         }
 
         $this->db->trans_start();
-        $this->E_tinh_chat_model->delete($id);
+        $this->E_tinh_chat_model->where('id_tinh_chat', $id)->update(['deleted_at' => date('Y-m-d H:i:s')]);
         $this->db->trans_commit();
 
         resSuccess([], 'Xóa thành công');

@@ -18,7 +18,9 @@ class Coquan extends REST_INSTANCE_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->permissionMiddleware();
+
+        // $this->permissionMiddleware();
+
         $this->load->helper('url');
         $this->load->model(['E_co_quan_model']);
     }
@@ -144,7 +146,7 @@ class Coquan extends REST_INSTANCE_Controller
         $this->db->trans_start();
         $this->E_co_quan_model
             ->where('id_co_quan', $id)
-            ->delete();
+            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
         $this->db->trans_commit();
 
         resSuccess([], 'Xóa cơ quan thành công');

@@ -159,7 +159,7 @@ class Vitricongviec extends REST_INSTANCE_Controller
         }
 
         $this->db->trans_start();
-        $this->Hrm_vi_tri_cong_viec_model->delete($id);
+        $this->Hrm_vi_tri_cong_viec_model->where('id_vi_tri_cong_viec', $id)->update(['deleted_at' => date('Y-m-d H:i:s')]);
         $this->createLog('Delete', 'Xóa vị trí công việc: ' . $vitri['ten_cong_viec'], $vitri, NULL, 'hrm_vi_tri_cong_viec');
         $this->db->trans_commit();
 

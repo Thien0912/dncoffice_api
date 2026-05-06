@@ -136,7 +136,7 @@ class Hinhthuc extends REST_INSTANCE_Controller
         }
 
         $this->db->trans_start();
-        $this->E_hinh_thuc_model->delete($id);
+        $this->E_hinh_thuc_model->where('id_hinh_thuc', $id)->update(['deleted_at' => date('Y-m-d H:i:s')]);
         $this->db->trans_commit();
 
         resSuccess([], 'Xóa thành công');

@@ -96,23 +96,24 @@ class Donvi extends REST_INSTANCE_Controller
             'email' => commonRequest('email') ? commonRequest('email') : null,
         ];
 
-        $existEmail = $this->E_don_vi_model->checkValueExists('email', $data['email']);
-        if ($existEmail) {
-            resError('Email đã tồn tại!');
+        if (!empty($data['email'])) {
+            $existEmail = $this->E_don_vi_model->checkValueExists('email', $data['email']);
+            if ($existEmail) {
+                resError('Email đã tồn tại!');
+            }
         }
 
         $rules = [
             'ten_don_vi' => 'required',
             // 'ma_don_vi' => 'required',
             'loai' => 'required',
-            'email' => 'required|email',
+            'email' => 'email',
         ];
 
         $customMessages = [
             'ten_don_vi.required' => 'Tên đơn vị bắt buộc nhập',
             // 'ma_don_vi.required' => 'Mã đơn vị bắt buộc nhập',
             'loai.required' => 'Loại bắt buộc nhập',
-            'email.required' => 'Email đơn vị bắt buộc nhập',
             'email.email' => 'Email nhập đúng định dạng',
         ];
         $validator = new Validator();
