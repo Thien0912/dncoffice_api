@@ -185,3 +185,37 @@ $route[prefixApi . 'calamviec/create'] = prefixController . 'danhmuc/hrm/calamvi
 $route[prefixApi . 'nganhang'] = prefixController . 'hrm/nganhang/index';
 $route[prefixApi . 'nganhang/cap-nhat'] = prefixController . 'hrm/nganhang/update';
 $route[prefixApi . 'nganhang/show/(:num)'] = prefixController . 'hrm/nganhang/show/$1';
+
+// Demo - Danh mục đơn vị mới
+// Phòng ban
+$route[prefixApi . 'phongban'] = prefixController . 'danhmuc/phongban/index';
+$route[prefixApi . 'phongban/create'] = prefixController . 'danhmuc/phongban/create';
+$route[prefixApi . 'phongban/show/(:num)'] = prefixController . 'danhmuc/phongban/show/$1';
+$route[prefixApi . 'phongban/update/(:num)'] = prefixController . 'danhmuc/phongban/update/$1';
+$route[prefixApi . 'phongban/delete/(:num)'] = prefixController . 'danhmuc/phongban/delete/$1';
+$route[prefixApi . 'phongban/export'] = prefixController . 'danhmuc/phongban/export';
+
+// Trung tâm
+$route[prefixApi . 'trungtam'] = prefixController . 'danhmuc/trungtam/index';
+$route[prefixApi . 'trungtam/create'] = prefixController . 'danhmuc/trungtam/create';
+$route[prefixApi . 'trungtam/show/(:num)'] = prefixController . 'danhmuc/trungtam/show/$1';
+$route[prefixApi . 'trungtam/update/(:num)'] = prefixController . 'danhmuc/trungtam/update/$1';
+$route[prefixApi . 'trungtam/delete/(:num)'] = prefixController . 'danhmuc/trungtam/delete/$1';
+$route[prefixApi . 'trungtam/export'] = prefixController . 'danhmuc/trungtam/export';
+
+// Trường
+$route[prefixApi . 'truong'] = prefixController . 'danhmuc/truong/index';
+$route[prefixApi . 'truong/create'] = prefixController . 'danhmuc/truong/create';
+$route[prefixApi . 'truong/show/(:num)'] = prefixController . 'danhmuc/truong/show/$1';
+$route[prefixApi . 'truong/update/(:num)'] = prefixController . 'danhmuc/truong/update/$1';
+$route[prefixApi . 'truong/delete/(:num)'] = prefixController . 'danhmuc/truong/delete/$1';
+$route[prefixApi . 'truong/export'] = prefixController . 'danhmuc/truong/export';
+
+// Khoa
+$route[prefixApi . 'khoa'] = prefixController . 'danhmuc/khoa/index';
+$route[prefixApi . 'khoa/create'] = prefixController . 'danhmuc/khoa/create';
+$route[prefixApi . 'khoa/show/(:num)'] = prefixController . 'danhmuc/khoa/show/$1';
+$route[prefixApi . 'khoa/update/(:num)'] = prefixController . 'danhmuc/khoa/update/$1';
+$route[prefixApi . 'khoa/delete/(:num)'] = prefixController . 'danhmuc/khoa/delete/$1';
+$route[prefixApi . 'khoa/theotruong/(:num)'] = prefixController . 'danhmuc/khoa/theotruong/$1';
+$route[prefixApi . 'khoa/export'] = prefixController . 'danhmuc/khoa/export';

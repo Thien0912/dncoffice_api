@@ -290,6 +290,17 @@ class Common
             'value' => 'DOANH_NGHIEP',
             'color' => 'cyan'
         ],
+        // Các loại đơn vị mới cho danh mục dùng chung
+        'PHONG_BAN' => [
+            'label' => 'Phòng ban',
+            'value' => 'PHONG_BAN',
+            'color' => 'green'
+        ],
+        'KHOA' => [
+            'label' => 'Khoa',
+            'value' => 'KHOA',
+            'color' => 'primary'
+        ],
     ];
 
     const TRANG_THAI_CONG_VIEC = [
